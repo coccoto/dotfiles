@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "usage: docker-wait <container>" >&2
+    exit 1
+fi
+
+container="$1"
+
+echo "waiting for ${container}..."
+
+until [[ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" == "true" ]]; do
+    sleep 1
+done
