@@ -8,13 +8,11 @@ dotfiles="$(cd "$(dirname "$0")" && pwd)"
 # ============================================================
 echo "準備フェーズを開始します"
 
-# --- 前提条件 ---
 if ! command -v git > /dev/null 2>&1; then
     echo "git がインストールされていません" >&2
     exit 1
 fi
 
-# --- 初期化 ---
 config_dir="$HOME/.config"
 share_dir="$HOME/.local/share"
 bin_dir="$HOME/.local/bin"
@@ -23,8 +21,7 @@ mkdir -p "$config_dir" "$share_dir" "$bin_dir"
 
 repos_file="$dotfiles/install/repos"
 
-# --- 関数 ---
-link() {
+create_symlink() {
     local source="$1"
     local target="$2"
 
@@ -50,7 +47,7 @@ install_tool() {
         git clone --quiet "$url" "$repo_dir"
     fi
 
-    link "$repo_dir/$script" "$bin_dir/$name"
+    create_symlink "$repo_dir/$script" "$bin_dir/$name"
 }
 
 # ============================================================
@@ -58,12 +55,11 @@ install_tool() {
 # ============================================================
 echo "設定フェーズを開始します"
 
-# --- Config ---
 for dir in "$dotfiles/config"/*; do
-    link "$dir" "$config_dir/$(basename "$dir")"
+    create_symlink "$dir" "$config_dir/$(basename "$dir")"
 done
 
-# --- OS ---
+# OS 依存の設定
 if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
     source "$dotfiles/install/wsl.sh"
 elif [[ "$(uname -s)" == "Darwin" ]]; then
@@ -75,7 +71,6 @@ fi
 # ============================================================
 echo "インストールフェーズを開始します"
 
-# --- 外部ツール ---
 while read -r url script name <&3 || [[ -n "$url" ]]; do
     [[ -z "$url" ]] && continue
 
@@ -92,7 +87,6 @@ done 3< "$repos_file"
 # ============================================================
 echo "検証フェーズを開始します"
 
-# --- PATH ---
 for dir in "$bin_dir" "$dotfiles/bin" "$dotfiles/local/bin"; do
     if [[ ":$PATH:" != *":$dir:"* ]]; then
         echo "PATH に ${dir/$HOME/\$HOME} を追加してください" >&2
