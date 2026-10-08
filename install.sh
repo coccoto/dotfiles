@@ -20,7 +20,7 @@ bin_dir="$HOME/.local/bin"
 
 mkdir -p "$config_dir" "$share_dir" "$bin_dir"
 
-repos_file="$dotfiles/repos"
+repos_file="$dotfiles/install/repos"
 
 # ============================================================
 # 設定
