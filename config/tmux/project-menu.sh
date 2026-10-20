@@ -8,7 +8,7 @@ while read -r project shortcut path <&3 || [[ -n "$project" ]]; do
     [[ -z "$project" ]] && continue
 
     if [[ -z "$path" ]]; then
-        echo "projects の書式が正しくありません: $project" >&2
+        echo "projects の形式が正しくありません: $project" >&2
         exit 1
     fi
 

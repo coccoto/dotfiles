@@ -5,23 +5,58 @@ dotfiles="$(cd "$(dirname "$0")" && pwd)"
 
 source "$dotfiles/lib/os.sh"
 
-# ============================================================
-# 準備
-# ============================================================
-echo "準備フェーズを開始します"
+load_os() {
+    local dotfiles="$1"
+    local os="$2"
 
-if ! command -v git > /dev/null 2>&1; then
-    echo "git が見つかりません" >&2
-    exit 1
-fi
+    if [[ -z "$os" ]]; then
+        echo "対応していない OS です" >&2
+        exit 1
+    fi
 
-config_dir="$HOME/.config"
-share_dir="$HOME/.local/share"
-bin_dir="$HOME/.local/bin"
+    source "$dotfiles/install/$os.sh"
+}
 
-mkdir -p "$config_dir" "$share_dir" "$bin_dir"
+preflight() {
+    local manager="$(os_package_manager)"
+    if ! command -v "$manager" > /dev/null 2>&1; then
+        echo "$manager が見つかりません" >&2
+        exit 1
+    fi
+}
 
-repos_file="$dotfiles/install/repos"
+install_packages() {
+    local deps_file="$1"
+    local os="$2"
+
+    local packages=()
+    local name target
+    while read -r name target <&3 || [[ -n "$name" ]]; do
+        [[ -z "$name" ]] && continue
+
+        if [[ -z "$target" ]]; then
+            echo "deps の形式が正しくありません: $name" >&2
+            exit 1
+        fi
+
+        if [[ "$target" == "all" || "$target" == "$os" ]]; then
+            packages+=("$name")
+        fi
+    done 3< "$deps_file"
+
+    [[ ${#packages[@]} -eq 0 ]] && return
+
+    echo "次のパッケージをインストールします: ${packages[*]}"
+
+    local answer
+    read -r -p "続けますか？ [y/N] " answer
+    if [[ "$answer" != [yY] ]]; then
+        echo "セットアップを中止しました" >&2
+        exit 1
+    fi
+
+    os_install_packages "${packages[@]}"
+}
 
 create_symlink() {
     local source="$1"
@@ -35,10 +70,22 @@ create_symlink() {
     ln -sfn "$source" "$target"
 }
 
+link_configs() {
+    local dotfiles="$1"
+    local config_dir="$2"
+
+    local dir
+    for dir in "$dotfiles/config"/*; do
+        create_symlink "$dir" "$config_dir/$(basename "$dir")"
+    done
+}
+
 install_tool() {
     local url="$1"
     local script="$2"
     local name="$3"
+    local share_dir="$4"
+    local bin_dir="$5"
 
     local repo_dir="$share_dir/$(basename "$url" .git)"
 
@@ -52,47 +99,58 @@ install_tool() {
     create_symlink "$repo_dir/$script" "$bin_dir/$name"
 }
 
-# ============================================================
-# 設定
-# ============================================================
-echo "設定フェーズを開始します"
+install_tools() {
+    local repos_file="$1"
+    local share_dir="$2"
+    local bin_dir="$3"
 
-for dir in "$dotfiles/config"/*; do
-    create_symlink "$dir" "$config_dir/$(basename "$dir")"
-done
+    local url script name
+    while read -r url script name <&3 || [[ -n "$url" ]]; do
+        [[ -z "$url" ]] && continue
 
-# OS 依存の設定
-if is_wsl; then
-    source "$dotfiles/install/wsl.sh"
-elif is_macos; then
-    source "$dotfiles/install/macos.sh"
-fi
+        if [[ -z "$name" ]]; then
+            echo "repos の形式が正しくありません: $url" >&2
+            exit 1
+        fi
 
-# ============================================================
-# インストール
-# ============================================================
-echo "インストールフェーズを開始します"
+        install_tool "$url" "$script" "$name" "$share_dir" "$bin_dir"
+    done 3< "$repos_file"
+}
 
-while read -r url script name <&3 || [[ -n "$url" ]]; do
-    [[ -z "$url" ]] && continue
+check_path() {
+    local dotfiles="$1"
+    local bin_dir="$2"
 
-    if [[ -z "$name" ]]; then
-        echo "repos の書式が正しくありません: $url" >&2
-        exit 1
-    fi
+    local dir
+    for dir in "$bin_dir" "$dotfiles/bin" "$dotfiles/local/bin"; do
+        if [[ ":$PATH:" != *":$dir:"* ]]; then
+            echo "PATH に ${dir/$HOME/\$HOME} を追加してください" >&2
+        fi
+    done
+}
 
-    install_tool "$url" "$script" "$name"
-done 3< "$repos_file"
+main() {
+    local dotfiles="$1"
 
-# ============================================================
-# 検証
-# ============================================================
-echo "検証フェーズを開始します"
+    echo "セットアップを開始します"
 
-for dir in "$bin_dir" "$dotfiles/bin" "$dotfiles/local/bin"; do
-    if [[ ":$PATH:" != *":$dir:"* ]]; then
-        echo "PATH に ${dir/$HOME/\$HOME} を追加してください" >&2
-    fi
-done
+    local config_dir="$HOME/.config"
+    local share_dir="$HOME/.local/share"
+    local bin_dir="$HOME/.local/bin"
+    local os="$(current_os)"
 
-echo "セットアップが完了しました"
+    load_os "$dotfiles" "$os"
+    preflight
+    install_packages "$dotfiles/install/deps" "$os"
+
+    mkdir -p "$config_dir" "$share_dir" "$bin_dir"
+
+    link_configs "$dotfiles" "$config_dir"
+    os_configure "$dotfiles"
+    install_tools "$dotfiles/install/repos" "$share_dir" "$bin_dir"
+    check_path "$dotfiles" "$bin_dir"
+
+    echo "セットアップが完了しました"
+}
+
+main "$dotfiles"
