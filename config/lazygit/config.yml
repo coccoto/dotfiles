@@ -1,2 +1,6 @@
 gui:
   language: ja
+
+git:
+  localBranchSortOrder: alphabetical
+  remoteBranchSortOrder: alphabetical

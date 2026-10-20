@@ -3,13 +3,15 @@ set -euo pipefail
 
 dotfiles="$(cd "$(dirname "$0")" && pwd)"
 
+source "$dotfiles/lib/os.sh"
+
 # ============================================================
 # 準備
 # ============================================================
 echo "準備フェーズを開始します"
 
 if ! command -v git > /dev/null 2>&1; then
-    echo "git がインストールされていません" >&2
+    echo "git が見つかりません" >&2
     exit 1
 fi
 
@@ -60,9 +62,9 @@ for dir in "$dotfiles/config"/*; do
 done
 
 # OS 依存の設定
-if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+if is_wsl; then
     source "$dotfiles/install/wsl.sh"
-elif [[ "$(uname -s)" == "Darwin" ]]; then
+elif is_macos; then
     source "$dotfiles/install/macos.sh"
 fi
 
