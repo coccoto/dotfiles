@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(dirname "$0")/../lib/os.sh"
+
+case "$(current_os)" in
+    wsl)
+        zenhan.exe 0
+        ;;
+    macos)
+        macism com.apple.keylayout.ABC
+        ;;
+    *)
+        echo "対応していない OS です" >&2
+        exit 1
+        ;;
+esac

@@ -15,3 +15,10 @@ vim.opt.smartcase = true
 
 -- --- Appearance ---
 vim.opt.cursorline = true
+
+-- --- IME ---
+vim.api.nvim_create_autocmd("InsertLeave", {
+    callback = function()
+        vim.system({ "ime-off" })
+    end,
+})
