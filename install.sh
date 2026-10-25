@@ -47,7 +47,7 @@ install_packages() {
 
     local package target_os
     while read -r package target_os <&3 || [[ -n "$package" ]]; do
-        [[ -z "$package" ]] && continue
+        [[ -z "$package" || "$package" == "#"* ]] && continue
 
         if [[ -z "$target_os" ]]; then
             echo "packages の形式が正しくありません: $package" >&2
@@ -124,7 +124,7 @@ install_tools() {
 
     local url command_path command_name target_os
     while read -r url command_path command_name target_os <&3 || [[ -n "$url" ]]; do
-        [[ -z "$url" ]] && continue
+        [[ -z "$url" || "$url" == "#"* ]] && continue
 
         if [[ -z "$target_os" ]]; then
             echo "tools の形式が正しくありません: $url" >&2

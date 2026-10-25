@@ -5,7 +5,7 @@ projects_file="$HOME/.config/tmux/projects"
 menu_items=()
 
 while read -r project_name shortcut project_dir <&3 || [[ -n "$project_name" ]]; do
-    [[ -z "$project_name" ]] && continue
+    [[ -z "$project_name" || "$project_name" == "#"* ]] && continue
 
     if [[ -z "$project_dir" ]]; then
         echo "projects の形式が正しくありません: $project_name" >&2

@@ -1,2 +1,3 @@
+# url command_path command_name target_os
 https://github.com/coccoto/git-auto-commit.git git-auto-commit.sh git-auto-commit all
 https://github.com/iuchim/zenhan/releases/latest/download/zenhan.zip zenhan/bin64/zenhan.exe zenhan.exe wsl
