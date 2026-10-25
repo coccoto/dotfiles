@@ -1,5 +1,6 @@
 git wsl
 jq wsl
+unzip wsl
 tmux all
 neovim all
 lazygit all

@@ -2,19 +2,19 @@
 set -euo pipefail
 
 projects_file="$HOME/.config/tmux/projects"
-menu=()
+menu_items=()
 
-while read -r project shortcut path <&3 || [[ -n "$project" ]]; do
-    [[ -z "$project" ]] && continue
+while read -r project_name shortcut project_dir <&3 || [[ -n "$project_name" ]]; do
+    [[ -z "$project_name" ]] && continue
 
-    if [[ -z "$path" ]]; then
-        echo "projects の形式が正しくありません: $project" >&2
+    if [[ -z "$project_dir" ]]; then
+        echo "projects の形式が正しくありません: $project_name" >&2
         exit 1
     fi
 
-    menu+=("$project" "$shortcut" "send-keys C-u 'cd $path' Enter")
+    menu_items+=("$project_name" "$shortcut" "send-keys C-u 'cd $project_dir' Enter")
 done 3< "$projects_file"
 
-[[ ${#menu[@]} -eq 0 ]] && exit 0
+[[ ${#menu_items[@]} -eq 0 ]] && exit 0
 
-tmux display-menu -T Projects "${menu[@]}"
+tmux display-menu -T Projects "${menu_items[@]}"

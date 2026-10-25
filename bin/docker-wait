@@ -2,14 +2,14 @@
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-    echo "usage: docker-wait <container>" >&2
+    echo "使い方: docker-wait <コンテナ名>" >&2
     exit 1
 fi
 
-container="$1"
+container_name="$1"
 
-echo "waiting for ${container}..."
+echo "${container_name} の起動を待っています..."
 
-until [[ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" == "true" ]]; do
+until [[ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "true" ]]; do
     sleep 1
 done

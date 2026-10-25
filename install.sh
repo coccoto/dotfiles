@@ -17,36 +17,19 @@ load_os() {
     source "$dotfiles/install/$os.sh"
 }
 
-preflight() {
-    local manager="$(os_package_manager)"
-    if ! command -v "$manager" > /dev/null 2>&1; then
-        echo "$manager が見つかりません" >&2
+check_package_manager() {
+    local package_manager="$(os_package_manager)"
+
+    if ! command -v "$package_manager" > /dev/null 2>&1; then
+        echo "$package_manager が見つかりません" >&2
         exit 1
     fi
 }
 
-install_packages() {
-    local deps_file="$1"
-    local os="$2"
+confirm_continue() {
+    local message="$1"
 
-    local packages=()
-    local name target
-    while read -r name target <&3 || [[ -n "$name" ]]; do
-        [[ -z "$name" ]] && continue
-
-        if [[ -z "$target" ]]; then
-            echo "deps の形式が正しくありません: $name" >&2
-            exit 1
-        fi
-
-        if [[ "$target" == "all" || "$target" == "$os" ]]; then
-            packages+=("$name")
-        fi
-    done 3< "$deps_file"
-
-    [[ ${#packages[@]} -eq 0 ]] && return
-
-    echo "次のパッケージをインストールします: ${packages[*]}"
+    echo "$message"
 
     local answer
     read -r -p "続けますか？ [y/N] " answer
@@ -54,77 +37,141 @@ install_packages() {
         echo "セットアップを中止しました" >&2
         exit 1
     fi
+}
+
+install_packages() {
+    local packages_file="$1"
+    local os="$2"
+
+    local packages=()
+
+    local package target_os
+    while read -r package target_os <&3 || [[ -n "$package" ]]; do
+        [[ -z "$package" ]] && continue
+
+        if [[ -z "$target_os" ]]; then
+            echo "packages の形式が正しくありません: $package" >&2
+            exit 1
+        fi
+
+        if [[ "$target_os" == "all" || "$target_os" == "$os" ]]; then
+            packages+=("$package")
+        fi
+    done 3< "$packages_file"
+
+    [[ ${#packages[@]} -eq 0 ]] && return
+
+    confirm_continue "次のパッケージをインストールします: ${packages[*]}"
 
     os_install_packages "${packages[@]}"
 }
 
 create_symlink() {
-    local source="$1"
-    local target="$2"
+    local source_path="$1"
+    local link_path="$2"
 
-    if [[ -e "$target" && ! -L "$target" ]]; then
-        echo "${target/$HOME/\$HOME} はシンボリックリンクではありません。移動または削除してから再実行してください" >&2
+    if [[ -e "$link_path" && ! -L "$link_path" ]]; then
+        echo "${link_path/$HOME/\$HOME} はシンボリックリンクではありません。移動または削除してから再実行してください" >&2
         exit 1
     fi
 
-    ln -sfn "$source" "$target"
+    ln -sfn "$source_path" "$link_path"
 }
 
 link_configs() {
     local dotfiles="$1"
     local config_dir="$2"
 
-    local dir
-    for dir in "$dotfiles/config"/*; do
-        create_symlink "$dir" "$config_dir/$(basename "$dir")"
+    local source_dir
+    for source_dir in "$dotfiles/config"/*; do
+        create_symlink "$source_dir" "$config_dir/$(basename "$source_dir")"
     done
 }
 
-install_tool() {
+fetch_git() {
     local url="$1"
-    local script="$2"
-    local name="$3"
-    local share_dir="$4"
-    local bin_dir="$5"
+    local tool_dir="$2"
 
-    local repo_dir="$share_dir/$(basename "$url" .git)"
-
-    if [[ -d "$repo_dir/.git" ]]; then
-        git -C "$repo_dir" fetch --quiet
-        git -C "$repo_dir" reset --quiet --hard '@{u}'
+    if [[ -d "$tool_dir/.git" ]]; then
+        git -C "$tool_dir" fetch --quiet
+        git -C "$tool_dir" reset --quiet --hard '@{u}'
     else
-        git clone --quiet "$url" "$repo_dir"
+        git clone --quiet "$url" "$tool_dir"
     fi
+}
 
-    create_symlink "$repo_dir/$script" "$bin_dir/$name"
+fetch_zip() {
+    local url="$1"
+    local tool_dir="$2"
+
+    local tmp_dir="$(mktemp -d)"
+
+    curl -fsSL -o "$tmp_dir/download.zip" "$url"
+    rm -rf "$tool_dir"
+    unzip -q "$tmp_dir/download.zip" -d "$tool_dir"
+
+    rm -rf "$tmp_dir"
 }
 
 install_tools() {
-    local repos_file="$1"
-    local share_dir="$2"
-    local bin_dir="$3"
+    local tools_file="$1"
+    local os="$2"
+    local share_dir="$3"
+    local bin_dir="$4"
 
-    local url script name
-    while read -r url script name <&3 || [[ -n "$url" ]]; do
+    local tools=()
+    local command_names=()
+
+    local url command_path command_name target_os
+    while read -r url command_path command_name target_os <&3 || [[ -n "$url" ]]; do
         [[ -z "$url" ]] && continue
 
-        if [[ -z "$name" ]]; then
-            echo "repos の形式が正しくありません: $url" >&2
+        if [[ -z "$target_os" ]]; then
+            echo "tools の形式が正しくありません: $url" >&2
             exit 1
         fi
 
-        install_tool "$url" "$script" "$name" "$share_dir" "$bin_dir"
-    done 3< "$repos_file"
+        if [[ "$target_os" == "all" || "$target_os" == "$os" ]]; then
+            tools+=("$url $command_path $command_name")
+            command_names+=("$command_name")
+        fi
+    done 3< "$tools_file"
+
+    [[ ${#tools[@]} -eq 0 ]] && return
+
+    confirm_continue "次のツールをインストールします: ${command_names[*]}"
+
+    local tool tool_dir
+    for tool in "${tools[@]}"; do
+        read -r url command_path command_name <<< "$tool"
+
+        tool_dir="$share_dir/$command_name"
+
+        case "$url" in
+            *.git)
+                fetch_git "$url" "$tool_dir"
+                ;;
+            *.zip)
+                fetch_zip "$url" "$tool_dir"
+                ;;
+            *)
+                echo "対応していない形式です: $url" >&2
+                exit 1
+                ;;
+        esac
+
+        create_symlink "$tool_dir/$command_path" "$bin_dir/$command_name"
+    done
 }
 
 check_path() {
     local dotfiles="$1"
     local bin_dir="$2"
 
-    local dir
-    for dir in "$bin_dir" "$dotfiles/bin" "$dotfiles/local/bin"; do
-        if [[ ":$PATH:" != *":$dir:"* ]]; then
-            echo "PATH に ${dir/$HOME/\$HOME} を追加してください" >&2
+    local path_dir
+    for path_dir in "$bin_dir" "$dotfiles/bin" "$dotfiles/local/bin"; do
+        if [[ ":$PATH:" != *":$path_dir:"* ]]; then
+            echo "PATH に ${path_dir/$HOME/\$HOME} を追加してください" >&2
         fi
     done
 }
@@ -137,17 +184,18 @@ main() {
     local config_dir="$HOME/.config"
     local share_dir="$HOME/.local/share"
     local bin_dir="$HOME/.local/bin"
-    local os="$(current_os)"
+    local os="$(detect_os)"
 
     load_os "$dotfiles" "$os"
-    preflight
-    install_packages "$dotfiles/install/deps" "$os"
+    check_package_manager
+    install_packages "$dotfiles/install/packages" "$os"
 
     mkdir -p "$config_dir" "$share_dir" "$bin_dir"
 
     link_configs "$dotfiles" "$config_dir"
     os_configure "$dotfiles"
-    install_tools "$dotfiles/install/repos" "$share_dir" "$bin_dir"
+    install_tools "$dotfiles/install/tools" "$os" "$share_dir" "$bin_dir"
+
     check_path "$dotfiles" "$bin_dir"
 
     echo "セットアップが完了しました"

@@ -23,5 +23,5 @@ case "$hook_event_name" in
 esac
 
 # ウィンドウローカルのフォーマットを設定する
-format="$(tmux show-options -gwv automatic-rename-format)"
-exec tmux set-option -w -t "$TMUX_PANE" automatic-rename-format "$icon $format"
+global_format="$(tmux show-options -gwv automatic-rename-format)"
+exec tmux set-option -w -t "$TMUX_PANE" automatic-rename-format "$icon $global_format"
