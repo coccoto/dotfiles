@@ -116,7 +116,7 @@ fetch_zip() {
 install_tools() {
     local tools_file="$1"
     local os="$2"
-    local tools_dir="$3"
+    local data_dir="$3"
     local bin_dir="$4"
 
     local tools=()
@@ -145,7 +145,7 @@ install_tools() {
     for tool in "${tools[@]}"; do
         read -r url command_path command_name <<< "$tool"
 
-        tool_dir="$tools_dir/$command_name"
+        tool_dir="$data_dir/$command_name"
 
         case "$url" in
             *.git)
@@ -184,7 +184,7 @@ main() {
     local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
     local share_dir="${XDG_DATA_HOME:-$HOME/.local/share}"
 
-    local tools_dir="$share_dir/dotfiles/tools"
+    local data_dir="$share_dir/dotfiles"
     local bin_dir="$HOME/.local/bin"
 
     local os="$(detect_os)"
@@ -193,11 +193,11 @@ main() {
     check_package_manager
     install_packages "$dotfiles/install/packages" "$os"
 
-    mkdir -p "$config_dir" "$tools_dir" "$bin_dir"
+    mkdir -p "$config_dir" "$data_dir" "$bin_dir"
 
     link_configs "$dotfiles" "$config_dir"
     os_configure "$dotfiles"
-    install_tools "$dotfiles/install/tools" "$os" "$tools_dir" "$bin_dir"
+    install_tools "$dotfiles/install/tools" "$os" "$data_dir" "$bin_dir"
 
     check_path "$dotfiles" "$bin_dir"
 
