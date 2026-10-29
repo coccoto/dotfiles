@@ -60,9 +60,26 @@ vim.pack.add({
 
 vim.keymap.set("n", "<leader>g", "<cmd>LazyGit<CR>")
 
+-- --- Plugins: gitsigns ---
+vim.pack.add({
+    "https://github.com/lewis6991/gitsigns.nvim",
+})
+
+require("gitsigns").setup()
+
 -- --- Plugins: indent-blankline ---
 vim.pack.add({
     "https://github.com/lukas-reineke/indent-blankline.nvim",
 })
 
 require("ibl").setup()
+
+-- --- Plugins: claudecode ---
+vim.pack.add({
+    "https://github.com/coder/claudecode.nvim",
+})
+
+require("claudecode").setup({
+    terminal = { provider = "none" },
+})
+

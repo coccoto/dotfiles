@@ -4,3 +4,6 @@ gui:
 git:
   localBranchSortOrder: alphabetical
   remoteBranchSortOrder: alphabetical
+
+os:
+  editPreset: nvim-remote
