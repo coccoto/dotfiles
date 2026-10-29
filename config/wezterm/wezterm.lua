@@ -11,6 +11,8 @@ config.keys = {{ key = 'Enter', mods = 'SHIFT', action = wezterm.action.SendStri
 if wezterm.target_triple:find('windows') then
     table.insert(config.keys, { key = 'v', mods = 'CTRL', action = wezterm.action.PasteFrom('Clipboard') })
 
+    config.swallow_mouse_click_on_window_focus = true
+
     -- 設定ファイルのパスからディストリビューションを抽出する
     local wsl_distro = wezterm.config_file:match([[^\\wsl[^\]+\([^\]+)]])
     if wsl_distro then
